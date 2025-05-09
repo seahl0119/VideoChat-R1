@@ -8,7 +8,7 @@ import re
 import pickle
 import torch
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
-from qwen_vl_utils import process_vision_info
+from my_qwen_utils import process_vision_info
 import random
 import ast
 import os
@@ -49,6 +49,7 @@ def get_args():
     parser.add_argument("--result_dir", type=str, default="checkpoints", help="Directory to save checkpoints")
     parser.add_argument("--resume", action="store_true", help="Resume from checkpoint")
     parser.add_argument("--num_gpus", type=int, default=8, help="GPU device to use")
+    parser.add_argument("--mode", type=str, default="base", help="TTS mode", choices=["base", "trim", "chat_trim", "chat_pred_trim"])
     return parser.parse_args()
 
 def calc_iou(candidates, gt):
@@ -278,7 +279,7 @@ def append_to_jsonl(file_path, data):
     except Exception as e:
         print(f"写入文件时发生错误: {e}")
 
-def process_work_items(work_items, model_base, device, result_dir, resume=False):
+def process_work_items(work_items, model_base, device, result_dir, resume=False, mode="base"):
     model, processor = setup_model(model_base, device)
 
     os.makedirs(f"{result_dir}/{model_base.replace('/', '-')}_track", exist_ok=True)
@@ -342,7 +343,8 @@ def evaluate(data, video_root, slurm_procid, args):
         args.model_base, 
         f'cuda:{slurm_procid}', 
         f'{args.result_dir}_{slurm_procid}',
-        args.resume
+        args.resume,
+        args.mode,
     )
 
     return ious, accs

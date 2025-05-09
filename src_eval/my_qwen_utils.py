@@ -19,6 +19,8 @@ from torchvision import io, transforms
 from torchvision.transforms import InterpolationMode
 from typing import Optional
 
+import random
+
 
 logger = logging.getLogger(__name__)
 
@@ -333,9 +335,16 @@ def fetch_video(ele: dict, image_factor: int = IMAGE_FACTOR, return_video_sample
         
         if mode == "base":
             pass
-        elif mode in ["trim", "chat_trim", "chat_pred_trim"]:
+        elif mode in ["trim", "chat_trim", "chat_pred_trim", "random"]:
             if mode == "trim":
                 glue_list = item["solution"]["glue"]
+            elif mode == "random":
+                s, e = random.randint(0, len(video)), random.randint(0, len(video))
+                if s > e:
+                    video = video[e:s]
+                else:
+                    video = video[s:e]
+                glue_list = None
             elif mode in ["chat_trim", "chat_pred_trim"]:
                 glue_list = ele.get("glue", None)
             if glue_list:

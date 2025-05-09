@@ -14,7 +14,8 @@ import ast
 import os
 import json
 from math import ceil
-from eval_prompts import GQA_THINK_ANSWER_GLUE as GQA_TEMPLATE 
+# from eval_prompts import GQA_THINK_ANSWER_GLUE as GQA_TEMPLATE 
+from eval_prompts import GQA_ANSWER as GQA_TEMPLATE 
 
 def split_data(data, num_gpus):
     is_dict = isinstance(data, dict)
@@ -44,12 +45,12 @@ def get_args():
     parser = argparse.ArgumentParser(description='Evaluation for nextgqa')
     parser.add_argument('--dataset', default='nextgqa', type=str, help='Specify the dataset.')
     parser.add_argument('--split', default='default', type=str, help='Specify the split.')
-    parser.add_argument("--model_base", type=str, default="OpenGVLab/VideoChat-R1_7B")
+    parser.add_argument("--model_base", type=str, default="Qwen/Qwen2.5-VL-7B-Instruct") # Qwen/Qwen2.5-VL-7B-Instruct, OpenGVLab/VideoChat-R1-thinking_7B
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
     parser.add_argument("--result_dir", type=str, default="checkpoints", help="Directory to save checkpoints")
     parser.add_argument("--resume", action="store_true", help="Resume from checkpoint")
     parser.add_argument("--num_gpus", type=int, default=1, help="GPU device to use")
-    parser.add_argument("--mode", type=str, default="base", help="TTS mode", choices=["base", "trim", "chat_trim", "chat_pred_trim"])
+    parser.add_argument("--mode", type=str, default="base", help="TTS mode", choices=["base", "trim", "chat_trim", "chat_pred_trim", "random"])
     return parser.parse_args()
 
 def calc_iou(candidates, gt):
@@ -94,7 +95,13 @@ def inference(video_path, prompt, model, processor, max_new_tokens=2048, device=
     image_inputs, video_inputs, video_kwargs = cached_process_vision_info(messages, return_video_kwargs=True, item=item, mode=mode)
     fps_inputs = video_kwargs['fps']
     
-    inputs = processor(text=[text], images=image_inputs, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
+    try:
+        inputs = processor(text=[text], images=image_inputs, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
+    except:
+        try:
+            inputs = processor(text=[text], images=None, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
+        except:
+            inputs = processor(text=[text], images=None, videos=None, fps=fps_inputs, padding=True, return_tensors="pt")
     inputs = inputs.to(device)
 
     with torch.no_grad():
@@ -102,7 +109,7 @@ def inference(video_path, prompt, model, processor, max_new_tokens=2048, device=
     
     generated_ids = [output_ids[i][len(inputs.input_ids[i]):] for i in range(len(output_ids))]
     output_text = processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
-    if mode in ["base", "trim"]:
+    if mode in ["base", "trim", "random"]:
         return output_text[0]
     elif mode in ["chat_trim"]:
         reasoning_prompt = "Wait. For answering the question, it would be better to focus on the last video which is the clued clip." # TODO(???): various version of prompt
@@ -154,8 +161,13 @@ def inference(video_path, prompt, model, processor, max_new_tokens=2048, device=
     
     image_inputs, video_inputs, video_kwargs = process_vision_info(messages, return_video_kwargs=True, item=item, mode=mode)
     fps_inputs = video_kwargs['fps']
-    
-    inputs = processor(text=[text], images=image_inputs, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
+    try:
+        inputs = processor(text=[text], images=image_inputs, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
+    except:
+        try:
+            inputs = processor(text=[text], images=None, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
+        except:
+            inputs = processor(text=[text], images=None, videos=None, fps=fps_inputs, padding=True, return_tensors="pt")
     inputs = inputs.to(device)
 
     with torch.no_grad():
