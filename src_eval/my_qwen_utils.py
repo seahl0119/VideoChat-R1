@@ -333,7 +333,7 @@ def fetch_video(ele: dict, image_factor: int = IMAGE_FACTOR, return_video_sample
             antialias=True,
         ).float()
         
-        if mode == "base":
+        if mode in ["base", "no_vision"]:
             pass
         elif mode in ["trim", "chat_trim", "chat_pred_trim", "random"]:
             if mode == "trim":

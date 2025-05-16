@@ -50,7 +50,7 @@ def get_args():
     parser.add_argument("--result_dir", type=str, default="checkpoints", help="Directory to save checkpoints")
     parser.add_argument("--resume", action="store_true", help="Resume from checkpoint")
     parser.add_argument("--num_gpus", type=int, default=1, help="GPU device to use")
-    parser.add_argument("--mode", type=str, default="base", help="TTS mode", choices=["base", "trim", "chat_trim", "chat_pred_trim", "random"])
+    parser.add_argument("--mode", type=str, default="base", help="TTS mode", choices=["base", "trim", "chat_trim", "chat_pred_trim", "random", "no_vision"])
     return parser.parse_args()
 
 def calc_iou(candidates, gt):
@@ -94,14 +94,16 @@ def inference(video_path, prompt, model, processor, max_new_tokens=2048, device=
     
     image_inputs, video_inputs, video_kwargs = cached_process_vision_info(messages, return_video_kwargs=True, item=item, mode=mode)
     fps_inputs = video_kwargs['fps']
-    
-    try:
-        inputs = processor(text=[text], images=image_inputs, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
-    except:
+    if mode != 'no_vison':
         try:
-            inputs = processor(text=[text], images=None, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
+            inputs = processor(text=[text], images=image_inputs, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
         except:
-            inputs = processor(text=[text], images=None, videos=None, fps=fps_inputs, padding=True, return_tensors="pt")
+            try:
+                inputs = processor(text=[text], images=None, videos=video_inputs, fps=fps_inputs, padding=True, return_tensors="pt")
+            except:
+                inputs = processor(text=[text], images=None, videos=None, fps=fps_inputs, padding=True, return_tensors="pt")
+    else:
+        inputs = processor(text=[text], images=None, videos=None, fps=fps_inputs, padding=True, return_tensors="pt")
     inputs = inputs.to(device)
 
     with torch.no_grad():
@@ -109,7 +111,7 @@ def inference(video_path, prompt, model, processor, max_new_tokens=2048, device=
     
     generated_ids = [output_ids[i][len(inputs.input_ids[i]):] for i in range(len(output_ids))]
     output_text = processor.batch_decode(generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True)
-    if mode in ["base", "trim", "random"]:
+    if mode in ["base", "trim", "random", "no_vision"]:
         return output_text[0]
     elif mode in ["chat_trim"]:
         reasoning_prompt = "Wait. For answering the question, it would be better to focus on the last video which is the clued clip." # TODO(???): various version of prompt
