@@ -51,7 +51,7 @@ def get_args():
         "--split", default="default", type=str, help="Specify the split."
     )
     parser.add_argument(
-        "--model_base", type=str, default="OpenGVLab/VideoChat-R1-thinking_7B"
+        "--model_base", type=str, default="OpenGVLab/VideoChat-R1_7B"
     )  # Qwen/Qwen2.5-VL-7B-Instruct, OpenGVLab/VideoChat-R1-thinking_7B, OpenGVLab/VideoChat-R1_7B
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
     parser.add_argument(
